@@ -1,0 +1,72 @@
+version: "3" 
+
+services:   
+
+    db:
+        restart: always
+        image: postgres:11
+        container_name: postgresql
+        ports:
+            - "5432:5432"
+        environment:
+            POSTGRES_PASSWORD: 1234
+            POSTGRES_USER: postgres
+            POSTGRES_DB: microservicos
+        command:
+            - "postgres"
+            - "-c"
+            - "listen_addresses=*" 
+            - "-c"
+            - "port=5432"
+
+    master:
+        build:
+            "./" 
+        container_name: master
+        working_dir: /go/src/app
+        command: go run main.go
+        ports:
+            - "2112:2112"
+        volumes:
+            - ./:/go/src/app
+        depends_on:
+            - db
+
+    rabbitmq:
+        restart: always
+        image: rabbitmq:management
+        ports:
+            - "5672:5672"
+            - "15672:15672"
+        depends_on:
+            - master
+    
+    slave1:
+        build:
+            "./worker/" 
+        container_name: slave1
+        working_dir: /go/src/app
+        command: go run worker.go
+        ports:
+            - "2113:2113"
+        volumes:
+            - ./worker/:/go/src/app
+        depends_on:
+            - master
+            - rabbitmq
+
+    slave2:
+        build:
+            "./worker/" 
+        container_name: slave2
+        working_dir: /go/src/app
+        command: go run worker.go
+        ports:
+            - "2114:2114"
+        volumes:
+            - ./worker/:/go/src/app
+        depends_on:
+            - master
+            - rabbitmq
+
+
